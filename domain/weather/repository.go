@@ -1,5 +1,5 @@
 package weather
 
 type Repository interface {
-	Save(*Weather) error
+	Save(*WeatherRegistry) error
 }
