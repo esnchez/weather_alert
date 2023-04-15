@@ -1,23 +1,21 @@
 package weather
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
 )
 
-type WeatherInfo struct {
-	CityName        string
-	Description     string
-	Temperature     float64
-	Humidity        int
-	WindSpeed       int
-	CloudPercentage int
-}
-
 type WeatherRegistry struct {
-	id        uuid.UUID
-	values    WeatherInfo
-	stateCode State
-	stateName string
+	id              uuid.UUID
+	cityName        string
+	description     string
+	temperature     float64
+	humidity        int
+	windSpeed       float64
+	cloudPercentage int
+	stateCode       State
+	stateName       string
 }
 
 // Enum-like State, that has its pre-defined values
@@ -32,31 +30,48 @@ const (
 
 // Limits set to calculate Weather State. They are stored in memory but could be taken from a configuration file
 var (
-	tempLimit      = 15
-	humLimit       = 80
-	windSpeedLimit = 8
-	cloudLimit     = 70
+	tempLimit            = 15
+	humLimit             = 80
+	windSpeedLimit       = 12
+	cloudPercentageLimit = 70
 
-	limitArray          = []int{tempLimit, humLimit, windSpeedLimit, cloudLimit}
-	operationIsMaxArray = []bool{false, true, true, true}
+	limitArray      = []int{tempLimit, humLimit, windSpeedLimit, cloudPercentageLimit}
+	isValueMaxArray = []bool{false, true, true, true}
+
+	ErrMissingValues = errors.New("Weather registry has to include weather valid values")
 )
 
 // Factory to create new weather registries that apply certain rules to define the final weather state.
-func NewWeatherRegistry(wr WeatherInfo) *WeatherRegistry {
+func NewWeatherRegistry(w WeatherJSONResp) (*WeatherRegistry, error) {
 
-	ws := calculateWeatherState(wr.Temperature, wr.Humidity, wr.WindSpeed, wr.CloudPercentage)
-	name := getWeatherStateName(ws)
+	//TEST HOW TO SEND AN INVALID WEATHER INFO
+
+	weatherState := calculateWeatherState(int(w.Main.Temperature), w.Main.Humidity, int(w.Wind.Speed), w.Clouds.All)
+	name := getStateName(weatherState)
 
 	return &WeatherRegistry{
-		id:        uuid.New(),
-		values:    wr,
-		stateCode: ws,
-		stateName: name,
-	}
-
+		id:              uuid.New(),
+		cityName:        w.Name,
+		description:     w.Weather[0].Description,
+		temperature:     w.Main.Temperature,
+		humidity:        w.Main.Humidity,
+		windSpeed:       w.Wind.Speed,
+		cloudPercentage: w.Clouds.All,
+		stateCode:       weatherState,
+		stateName:       name,
+	}, nil
 }
 
-func getWeatherStateName(s State) string {
+func (wr *WeatherRegistry) GetState() string {
+	return wr.stateName
+}
+
+func (wr *WeatherRegistry) GetStateCode() State {
+	return wr.stateCode
+}
+
+// Helper function to retrieve an explanatory string depending on State value
+func getStateName(s State) string {
 	if s == 1 {
 		return "Bad weather"
 	}
@@ -66,13 +81,14 @@ func getWeatherStateName(s State) string {
 	return "Neutral weather"
 }
 
-func calculateWeatherState(temp float64, hum, ws, cp int) State {
+// Returns the final weather State (int) based on the sumatory of each weather category ponderation
+func calculateWeatherState(temp, hum, ws, cp int) State {
 	var weatherValue int
 
-	valuesArray := [4]int{int(temp), hum, ws, cp}
+	weaValArray := [4]int{temp, hum, ws, cp}
 
-	for i, _ := range valuesArray {
-		val := calculateVal(operationIsMaxArray[i], valuesArray[i], limitArray[i])
+	for i := range weaValArray {
+		val := calculateVal(isValueMaxArray[i], weaValArray[i], limitArray[i])
 		weatherValue += val
 	}
 
@@ -85,21 +101,28 @@ func calculateWeatherState(temp float64, hum, ws, cp int) State {
 	return NeutralWeather
 }
 
-// This function sets
-func calculateVal(isMax bool, value, limit int) int {
-	switch isMax {
+// This function returns a numeric value depending on the operation and the comparison between the limit established and the weather category value
+func calculateVal(isValueMax bool, value, limit int) int {
+	switch isValueMax {
 	case true:
 		if value > limit {
 			return 2
 		}
 		return 0
+	// temperature evaluation
 	case false:
-		if value < limit {
+		if value < limit-10 {
+			return 3
+		}
+		if value < limit-5 {
 			return 2
+		}
+		if value < limit {
+			return 1
 		}
 		return 0
 	default:
-		panic("Error with unexpected value")
+		panic("Error: unexpected boolean value")
 	}
 
 }

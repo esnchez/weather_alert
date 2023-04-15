@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/esnchez/weather_alert/domain/weather"
 )
 
 var (
@@ -11,12 +14,21 @@ var (
 
 func main() {
 
-	resp, err := http.Get(urlBcn)
+	resp, err := http.DefaultClient.Get(urlBcn)
 	if err != nil {
 		fmt.Printf("An error occurred fetching data %v", err)
 	}
 
-	fmt.Println(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("Expected error code 200, got %v", resp.StatusCode)
+	}
+
+	defer resp.Body.Close()
+
+	weatherResponse := &weather.WeatherJSONResp{}
+	json.NewDecoder(resp.Body).Decode(weatherResponse)
+
+	fmt.Println(weatherResponse )
 
 	fmt.Println("Listening on port :8080")
 	http.ListenAndServe(":8080", nil)
