@@ -1,7 +1,7 @@
       
-##Backend system built in Go for saving weather registries plus an alerting system
+## Backend system built in Go for saving weather registries plus an alerting system
       
-###Abstract
+### Abstract
 
 Starting from the problem we had, it has been build a system that exposes API endpoints to save weather registries. You can also get the list of the recorded registries. The system will hit the public wheather api endpoint to fetch the weather information. 
 
@@ -12,7 +12,7 @@ There are **4 possible weather states: Bad, Neutral, Good and Undefined Weather*
 
 In future versions, the app could have ways to modify these weather parameters limits, store them in a repository, or be loaded from config files. For now, they are hardcoded in the program. Also the math operations could be re-thought to be more complex and accurated. 
 
-###Usage
+### Usage
 
 The application will run on localhost, port 5000. 
 For interacting with the app, here you have the endpoints. 
@@ -29,13 +29,13 @@ Weather service can be configured with different repos (memory and mysql) and no
 Twilio service is a functional notification system built with Twilio. In this case, my personal mobile phone has been submitted to Twilio as the receptor of the alerts. 
 
 
-###Architecture
+### Architecture
 
 Regarding architecture and development, DDD principles have been followed, taking into account that Go packages, interfaces, etc. might allow us to create a slighlty different folder structure than other languages.
 
 Docker compose will launch the complete system(mysql repo and twilio service). Phpadmin is also launched to interact with the db easily with the UI.  
 
-Build and run the system:
+**Build and run the system:**
 
     docker compose up --build
 
