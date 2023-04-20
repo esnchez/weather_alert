@@ -1,5 +1,6 @@
 package weather
 
+// Data entities that will be received as weather API call response
 type WeatherJSONResp struct {
 	Coord      Coord     `json:"coord"`
 	Weather    []Weather `json:"weather"`

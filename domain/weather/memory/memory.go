@@ -1,10 +1,10 @@
 package memory
 
 import (
+	"fmt"
+
 	"github.com/esnchez/weather_alert/domain/weather"
 )
-
-// var wrList = []*weather.WeatherRegistry{}
 
 type MemoryRepository struct {
 	list []*weather.WeatherRegistry
@@ -24,6 +24,13 @@ func (mr *MemoryRepository) GetAll() ([]*weather.WeatherRegistry, error) {
 }
 
 func (mr *MemoryRepository) Save(wr *weather.WeatherRegistry) error {
+
+	for _, v := range mr.list {
+		if v == wr {
+			return fmt.Errorf("Weather registry already exists: %w", weather.ErrFailedToCreateRegistry)
+		}
+	}
+
 	mr.list = append(mr.list, wr)
 
 	return nil

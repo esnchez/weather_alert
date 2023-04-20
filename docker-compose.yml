@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  db:
+    container_name: mysql_db
+    image: 'mysql:latest'
+    environment: 
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: weather_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      DATABASE_HOST: db
+    ports:
+      - 3306:3306
+    volumes:
+      - './sql/init.sql:/docker-entrypoint-initdb.d/init.sql'
+
+  phpmyadmin:
+    container_name: mysql_admin
+    image: phpmyadmin/phpmyadmin
+    expose: 
+      - 80
+    ports:
+      - 8081:80
+    environment:
+      - PMA_HOST=db
+    depends_on:
+      - db
+
+  service:
+    container_name: weather
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    restart: on-failure
+    depends_on: 
+      - db
+    links:
+      - db
+    environment: 
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: weather_db
+      DB_USER: user
+      DB_PASSWORD: password
+
+      
+      ALERT_PHONE_NUMBER: 0
+      ALERT_MSG: '[DEFAULT ALERT] Bad weather prevision in the following city: '
+
+      ACCOUNT_SID: AC282d5e9f31a619f08496ccb9150460d5
+      AUTH_TOKEN: 4904aa959e73f11f2193fb20a90598e4
+      TWILIO_PHONE: '+13187318414'
+      PERSONAL_PHONE: '+34650870690'
+
+    ports:
+      - 5000:5000
+

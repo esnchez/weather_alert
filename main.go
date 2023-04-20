@@ -1,35 +1,34 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
+	"log"
 
-	"github.com/esnchez/weather_alert/domain/weather"
+	"github.com/esnchez/weather_alert/domain/weather/mysql"
+	"github.com/esnchez/weather_alert/service/notification"
+	service "github.com/esnchez/weather_alert/service/weather"
 )
 
 var (
-	urlBcn = "https://api.openweathermap.org/data/2.5/weather?q=barcelona&units=metric&appid=d6c6d8d30c6b59e827fb054180f82198"
+	weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q=cityname&units=metric&appid=d6c6d8d30c6b59e827fb054180f82198"
 )
 
 func main() {
 
-	resp, err := http.DefaultClient.Get(urlBcn)
+	db, err := mysql.NewMySQLDatabase()
 	if err != nil {
-		fmt.Printf("An error occurred fetching data %v", err)
+		log.Fatalf("DB connection error: %s", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("Expected error code 200, got %v", resp.StatusCode)
+	cfg := notification.NewTwilioConfig()
+
+	weatherSvc, err := service.NewWeatherService(
+		service.WithMySQLWeatherRepository(db.GetDB()),
+		service.WithTwilioService(cfg),
+	)
+	if err != nil {
+		log.Fatalf("Error creating the weather service: %s", err)
 	}
 
-	defer resp.Body.Close()
-
-	weatherResponse := &weather.WeatherJSONResp{}
-	json.NewDecoder(resp.Body).Decode(weatherResponse)
-
-	fmt.Println(weatherResponse )
-
-	fmt.Println("Listening on port :8080")
-	http.ListenAndServe(":8080", nil)
+	server := NewServer(":5000", weatherSvc)
+	log.Fatal(server.Run())
 }

@@ -2,23 +2,25 @@ package weather
 
 import (
 	"errors"
+	"log"
 
 	"github.com/google/uuid"
 )
 
+var (
+	ErrInvalidParams = errors.New("Weather registry creation failed because of incomplete information")
+)
+
+// Principal entity in our business domain
 type WeatherRegistry struct {
-	id              uuid.UUID
-	cityName        string
-	description     string
-	temperature     float64
-	humidity        int
-	windSpeed       float64
-	cloudPercentage int
-	stateCode       State
-	stateName       string
+	Id          string  `json:"id"`
+	CityName    string  `json:"cityname"`
+	Temperature float64 `json:"temperature"`
+	StateCode   State   `json:"statecode"`
+	StateDesc   string  `json:"description"`
 }
 
-// Enum-like State, that has its pre-defined values
+// Enum-like State has its pre-defined values
 type State int
 
 const (
@@ -28,7 +30,12 @@ const (
 	GoodWeather
 )
 
-// Limits set to calculate Weather State. They are stored in memory but could be taken from a configuration file
+// Limits in 4 weather parameters set to calculate Weather State. They are stored in memory but could be taken from a configuration file/db
+//Temperature: Represented in ºC
+//Humidity: Percentage
+//Wind Speed: ms/s
+//Cloud: Percentage
+
 var (
 	tempLimit            = 15
 	humLimit             = 80
@@ -37,41 +44,35 @@ var (
 
 	limitArray      = []int{tempLimit, humLimit, windSpeedLimit, cloudPercentageLimit}
 	isValueMaxArray = []bool{false, true, true, true}
-
-	ErrMissingValues = errors.New("Weather registry has to include weather valid values")
 )
 
-// Factory to create new weather registries that apply certain rules to define the final weather state.
-func NewWeatherRegistry(w WeatherJSONResp) (*WeatherRegistry, error) {
+// Factory to create new weather registries. Applies certain rules to define the final weather state.
+func NewWeatherRegistry(w *WeatherJSONResp) (*WeatherRegistry, error) {
 
-	//TEST HOW TO SEND AN INVALID WEATHER INFO
+	if w.Name == "" {
+		return nil, ErrInvalidParams
+	}
 
-	weatherState := calculateWeatherState(int(w.Main.Temperature), w.Main.Humidity, int(w.Wind.Speed), w.Clouds.All)
-	name := getStateName(weatherState)
+	weatherState, desc := calculateWeatherState(int(w.Main.Temperature), w.Main.Humidity, int(w.Wind.Speed), w.Clouds.All)
+	log.Println("Created weather state and description: ", weatherState, desc)
+	if weatherState == UndefinedWeather {
+		return nil, ErrInvalidParams
+	}
 
 	return &WeatherRegistry{
-		id:              uuid.New(),
-		cityName:        w.Name,
-		description:     w.Weather[0].Description,
-		temperature:     w.Main.Temperature,
-		humidity:        w.Main.Humidity,
-		windSpeed:       w.Wind.Speed,
-		cloudPercentage: w.Clouds.All,
-		stateCode:       weatherState,
-		stateName:       name,
+		Id:          uuid.New().String(),
+		CityName:    w.Name,
+		Temperature: w.Main.Temperature,
+		StateCode:   weatherState,
+		StateDesc:   desc,
 	}, nil
 }
 
-func (wr *WeatherRegistry) GetState() string {
-	return wr.stateName
-}
-
-func (wr *WeatherRegistry) GetStateCode() State {
-	return wr.stateCode
-}
-
 // Helper function to retrieve an explanatory string depending on State value
-func getStateName(s State) string {
+func getStateDesc(s State) string {
+	if s == 0 {
+		return "Undefined weather"
+	}
 	if s == 1 {
 		return "Bad weather"
 	}
@@ -82,7 +83,7 @@ func getStateName(s State) string {
 }
 
 // Returns the final weather State (int) based on the sumatory of each weather category ponderation
-func calculateWeatherState(temp, hum, ws, cp int) State {
+func calculateWeatherState(temp, hum, ws, cp int) (State, string) {
 	var weatherValue int
 
 	weaValArray := [4]int{temp, hum, ws, cp}
@@ -92,35 +93,46 @@ func calculateWeatherState(temp, hum, ws, cp int) State {
 		weatherValue += val
 	}
 
-	if weatherValue >= 6 {
-		return BadWeather
+	if weatherValue == 0 {
+		return UndefinedWeather, getStateDesc(UndefinedWeather)
 	}
-	if weatherValue <= 2 {
-		return GoodWeather
+	if weatherValue >= 7 {
+		return BadWeather, getStateDesc(BadWeather)
 	}
-	return NeutralWeather
+	if weatherValue <= 3 {
+		return GoodWeather, getStateDesc(GoodWeather)
+	}
+	return NeutralWeather, getStateDesc(NeutralWeather)
 }
 
 // This function returns a numeric value depending on the operation and the comparison between the limit established and the weather category value
 func calculateVal(isValueMax bool, value, limit int) int {
+
 	switch isValueMax {
+	// humidity, wind speed and cloud percentage evaluation
 	case true:
+		if value == 0 {
+			return 0
+		}
 		if value > limit {
 			return 2
 		}
-		return 0
+		return 1
 	// temperature evaluation
 	case false:
+		if value == 0 {
+			return 0
+		}
 		if value < limit-10 {
-			return 3
+			return 4
 		}
 		if value < limit-5 {
-			return 2
+			return 3
 		}
 		if value < limit {
-			return 1
+			return 2
 		}
-		return 0
+		return 1
 	default:
 		panic("Error: unexpected boolean value")
 	}
