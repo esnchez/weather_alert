@@ -18,6 +18,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("DB connection error: %s", err)
 	}
+	defer db.Close()
 
 	cfg := notification.NewTwilioConfig()
 
