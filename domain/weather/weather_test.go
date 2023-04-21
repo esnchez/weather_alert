@@ -63,7 +63,6 @@ func Test_CreateAllWeatherRegistryTypes(t *testing.T) {
 			test: "Creating a good weather registry",
 			weatherInfo: &weather.WeatherJSONResp{
 				Name: "Barcelona",
-				// Weather: []weather.Weather{
 				Main: weather.Main{
 					Temperature: 25,
 					Humidity:    50,

@@ -99,7 +99,7 @@ func calculateWeatherState(temp, hum, ws, cp int) (State, string) {
 	if weatherValue >= 7 {
 		return BadWeather, getStateDesc(BadWeather)
 	}
-	if weatherValue <= 3 {
+	if weatherValue <= 4 {
 		return GoodWeather, getStateDesc(GoodWeather)
 	}
 	return NeutralWeather, getStateDesc(NeutralWeather)
